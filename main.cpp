@@ -42,10 +42,6 @@ vector <complex <double> > oneQubitTransformation(vector <complex <double> > &ve
 }
 
 int	main(int argc, char **argv) {
-	cout << sizeof(complex<float>) << endl;
-	cout << sizeof(complex<double>) << endl;
-	cout << sizeof(float) << endl;
-	cout << sizeof(double) << endl;
 	// инициализация вектора случайными значениями
 	unsigned long long vectorSize = pow(2, COUNT_QUBIT);
 	vector <complex <double> > vec(vectorSize);
