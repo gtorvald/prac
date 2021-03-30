@@ -42,12 +42,24 @@ vector <complex <double> > oneQubitTransformation(vector <complex <double> > &ve
 }
 
 int	main(int argc, char **argv) {
-	// инициализация вектора случайными значениями
+	// инициализация вектора случайными значениями c последующим нормированием
 	unsigned long long vectorSize = pow(2, COUNT_QUBIT);
 	vector <complex <double> > vec(vectorSize);
-	#pragma omp parallel for
-	for (long long i = 0; i < vec.size(); i++)
-		vec[i] = complex<double> (1. / rand(), 1. / rand());
+	double norm = 0;
+	#pragma omp parallel
+	{
+		#pragma omp for reduction(+:norm)
+		for (long long i = 0; i < vec.size(); i++) {
+			double realPart = 1. / rand();
+			double imagPart = 1. / rand();
+			vec[i] = complex<double> (realPart, imagPart);
+			norm += pow(realPart, 2) + pow(imagPart, 2);
+		}
+		norm = sqrt(norm);
+		#pragma omp for
+		for (long long i = 0; i < vec.size(); i++)
+			vec[i] = vec[i] / norm;
+	}
 	// инициализация матрицы преобразования Адамара
 	vector <vector <complex <double> > > matrix(2);
 	matrix[0].resize(2);
