@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <random>
 #include <fstream>
+#include <cmath>
 #include <mpi.h>
 
 using namespace std;
@@ -33,9 +34,9 @@ int handleError(int errorCode, int rank, complexd **states, complexd **statesFri
 	}
 	MPI_Finalize();
 	if (states)
-		delete [] states;
+		delete [] *states;
 	if (statesFriend)
-		delete [] statesFriend;
+		delete [] *statesFriend;
 	return 0;
 }
 
@@ -185,11 +186,12 @@ int main(int argc, char **argv) {
 		len = pow(2, countQubits) / size; // потому что кол-во процессов - степень 2
 		complexd *states = new complexd[len];
 		int numQubit = atoi(argv[4]);
+		// generateVector(states, size, rank); // генерация вектора для тестирования времени
 		if (readVectorFromFile(states, argv[2], size, rank))
 			return handleError(5, rank, &states, 0);
 		// подсчет потока для обмена данными
 		int rankFriend;
-		if (numQubit > size)
+		if (numQubit > log2(size))
 			rankFriend = rank;
 		else if (rank % (int)(size / pow(2, numQubit - 1)) < size / pow(2, numQubit))
 			rankFriend = rank + size / pow(2, numQubit);
@@ -204,13 +206,24 @@ int main(int argc, char **argv) {
 			MPI_Recv(statesFriend, len, MPI_DOUBLE_COMPLEX, rankFriend, 0, MPI_COMM_WORLD, &status);
 		}
 		// общее для двух режимов преобразование вектора
+		double timeStart = MPI_Wtime();
 		complexd *transformedStates = oneQubitTransformation(states, statesFriend, countQubits, numQubit, rank, rankFriend);
+		double timeEnd = MPI_Wtime();
+		double time = timeEnd - timeStart;
+		double maxTime;
+		// вывод времени работы в файл для тестирования времени
+		// MPI_Reduce(&time, &maxTime, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+		// if (!rank) {
+		// 	ofstream fout(argv[5], ios_base::app);
+		// 	fout << "\t" << numQubit << "\t" << countQubits << "\t" << size << "\t" << maxTime << endl;
+		// 	fout.close();
+		// }
 		if (!strcmp(argv[1], "read")) { // вывод преобразованного вектора для режима чтения
 			if (writeVectorInFile(transformedStates, argv[5], size, rank)) {
 				delete [] transformedStates;
 				return handleError(8, rank, &states, &statesFriend);
 			}
-		} else { // сравнение преобразованного вектора с вектором из файла в режиме чтения
+		} else { // сравнение преобразованного вектора с вектором из файла в режиме тестирования
 			complexd *validStates = new complexd[len];
 			if (readVectorFromFile(validStates, argv[5], size, rank)) {
 				delete [] transformedStates;

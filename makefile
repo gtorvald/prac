@@ -15,6 +15,13 @@ compile:
 	@$(G++) $(FLAG) $(SRCS) -o $(NAME)
 	@echo "Compiled"
 
+time:
+	for count in 25 26 27 ; do \
+	for threads in 1 2 4 8 16 32 64 ; do \
+	for num in 1 2 $$count ; do \
+	mpisubmit.pl -p $$threads go read vector.txt $$count $$num time.txt ; \
+	done ; done ; done  
+
 test: compile
 	@touch vector.txt
 	@echo "Generating vector (16 qubits) on 8 threads..."
