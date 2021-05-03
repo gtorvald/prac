@@ -1,7 +1,6 @@
-G++ = mpic++
-FLAG = -std=c++11
+G++ = mpixlcxx
 NAME = go
-SRCS = main.cpp
+SRCS = main.cxx
 
 .PHONY: all test generate fclean report
 
@@ -12,30 +11,20 @@ all: compile
 	@echo "    mpirun -np <threads> go test <inputFile> <countQubits> <numQubit> <validFile>"
 
 compile:
-	@$(G++) $(FLAG) $(SRCS) -o $(NAME)
+	$(G++) -O2 -qstrict $(SRCS) -o $(NAME)
 	@echo "Compiled"
 
-time:
-	for count in 25 26 27 ; do \
-	for threads in 1 2 4 8 16 32 64 ; do \
-	for num in 1 2 $$count ; do \
-	mpisubmit.pl -p $$threads go read vector.txt $$count $$num time.txt ; \
-	done ; done ; done  
+time: compile
+	touch time.txt
+	for threads in 8 16 32 64 128 256 ; do \
+		for j in 1 2 3 4 ; do \
+			mpisubmit.bg -n $$threads go read null 28 0.01 null time.txt 1 ; \
+	done ; done
 
 test: compile
-	@touch vector.txt
-	@echo "Generating vector (16 qubits) on 8 threads..."
-	@mpirun -np 8 go generate vector.txt 16
-	@touch 1.txt
-	@for num in 1 2 16 ; do \
-	echo "Testing number of qubit = $$num" ; \
-	echo "Transforming vector on 1 thread..." ; \
-	mpirun -np 1 go read vector.txt 16 $$num 1.txt ; \
-	echo "Testing:" ; \
-	for threads in 2 4 8 ; do \
-	mpirun -np $$threads go test vector.txt 16 $$num 1.txt ; \
-	done ; done
-	@rm vector.txt 1.txt
+	for ((i = 0; i < 10; i++)) ; do \
+		mpisubmit.bg -n 64 go test null 26 0.001 null null prec_26_0_001.txt ; \
+	done ;
 
 module:
 	@echo "module load SpectrumMPI/10.1.0"
